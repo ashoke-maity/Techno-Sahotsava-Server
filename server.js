@@ -10,6 +10,7 @@ const corsOptions = require('./middlewares/corsMiddleware');
 
 // routes imports
 const adminRoutes = require('./routes/adminRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // middleware
 const app = express();
@@ -32,6 +33,7 @@ app.use(cors(corsOptions));
 
 // Routes
 app.use('/technoSahotsava2026/admin', adminRoutes);
+app.use('/technoSahotsava2026/auth', authRoutes);
 
 server.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`)

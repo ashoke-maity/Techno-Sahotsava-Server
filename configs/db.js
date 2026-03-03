@@ -19,6 +19,8 @@ const connectDB = async () => {
         const CollegeRepData = await client`SELECT * FROM event_management.college_representatives`;
         const EventRegData = await client`SELECT * FROM event_management.event_registrations`;
         const EventsData = await client`SELECT * FROM event_management.events`;
+        const ParticipantsData = await client`SELECT * FROM event_management.participants`;
+        console.log("Successfully fetched participants data:", ParticipantsData);
         console.log("Successfully fetched admin data:", AdminData);
         console.log("Successfully fetched college representatives data:", CollegeRepData);
         console.log("Successfully fetched Event Registration data:", EventRegData);
