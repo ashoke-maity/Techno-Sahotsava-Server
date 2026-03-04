@@ -1,4 +1,5 @@
 const { client } = require('../configs/db');
+const { logSystemEvent } = require('../services/loggingService');
 
 const getRegistrationStatus = async (req, res) => {
     try {
@@ -42,10 +43,20 @@ const updateRegistrationStatus = async (req, res) => {
             registration_open
         });
 
-        // Emit real-time update
+        // Emit real-time update as strictly typed boolean
         const io = req.app.get('io');
         if (io) {
-            io.emit('registrationStatusUpdate', { registration_open });
+            const statusBool = String(registration_open) === 'true';
+            console.log(`[SYSTEM] Broadcasting Registration Gateway Status: ${statusBool ? 'OPEN' : 'CLOSED'}`);
+            io.emit('registrationStatusUpdate', { registration_open: statusBool });
+
+            // Log the event
+            logSystemEvent(io, {
+                action: statusBool ? "REGISTRATION_OPENED" : "REGISTRATION_CLOSED",
+                category: "ADMIN",
+                userName: req.admin?.name || "System Admin",
+                details: `Gateway protocol switched to ${statusBool ? 'ACTIVE' : 'LOCKED'}`
+            });
         }
     } catch (error) {
         console.error("Update Registration Status Error:", error);
@@ -76,6 +87,14 @@ const updateMaintenanceMode = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.emit('maintenanceModeUpdate', { maintenance_mode });
+
+            // Log the event
+            logSystemEvent(io, {
+                action: maintenance_mode ? "MAINTENANCE_ENABLED" : "MAINTENANCE_DISABLED",
+                category: "ADMIN",
+                userName: req.admin?.name || "System Admin",
+                details: `Maintenance protocol flipped to ${maintenance_mode ? 'CRITICAL' : 'STANDBY'}`
+            });
         }
     } catch (error) {
         console.error("Update Maintenance Mode Error:", error);

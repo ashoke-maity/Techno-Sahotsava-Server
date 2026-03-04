@@ -1,4 +1,5 @@
 const { client } = require('../configs/db');
+const { logSystemEvent } = require('../services/loggingService');
 
 const getAllEvents = async (req, res) => {
     try {
@@ -36,10 +37,18 @@ const updateEventStatus = async (req, res) => {
             return res.status(404).json({ message: "Event protocol not found in registry" });
         }
 
-        // Emit real-time update via WebSockets
+        // Emit real-time update via WebSockets using the database verified ID
         const io = req.app.get('io');
         if (io) {
-            io.emit('eventStatusUpdate', { id, status });
+            io.emit('eventStatusUpdate', { id: result[0].id, status });
+
+            // Log the event
+            logSystemEvent(io, {
+                action: status === 'ACTIVE' ? "EVENT_ACTIVATED" : "EVENT_DEACTIVATED",
+                category: "ADMIN",
+                userName: req.admin?.name || "System Admin",
+                details: `Protocol [${result[0].name}] set to ${status}`
+            });
         }
 
         res.status(200).json({
@@ -56,4 +65,40 @@ const updateEventStatus = async (req, res) => {
     }
 };
 
-module.exports = { getAllEvents, updateEventStatus };
+const toggleAllEvents = async (req, res) => {
+    const { status } = req.body;
+
+    if (!status || (status !== 'ACTIVE' && status !== 'INACTIVE')) {
+        return res.status(400).json({ message: "Valid status (ACTIVE/INACTIVE) is required" });
+    }
+
+    try {
+        await client`
+            UPDATE event_management.events 
+            SET status = ${status}
+        `;
+
+        // Emit real-time update via WebSockets
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('globalEventStatusUpdate', { status });
+
+            // Log the event
+            logSystemEvent(io, {
+                action: status === 'ACTIVE' ? "MASS_ACTIVATION" : "MASS_SHUTDOWN",
+                category: "CORE",
+                userName: req.admin?.name || "Core Member",
+                details: `All event protocols forced to ${status}`
+            });
+        }
+
+        res.status(200).json({
+            message: `All events set to ${status} successfully`
+        });
+    } catch (error) {
+        console.error("Toggle All Events Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+module.exports = { getAllEvents, updateEventStatus, toggleAllEvents };

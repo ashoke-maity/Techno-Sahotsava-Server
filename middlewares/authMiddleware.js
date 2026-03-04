@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { client } = require('../configs/db');
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -11,6 +12,18 @@ const authMiddleware = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Backward compatibility for tokens issued before 'name' was added to the payload
+        if (!decoded.name && decoded.email) {
+            const adminData = await client`
+                SELECT name FROM event_management.admins 
+                WHERE email = ${decoded.email} LIMIT 1
+            `;
+            if (adminData.length > 0 && adminData[0].name) {
+                decoded.name = adminData[0].name;
+            }
+        }
+
         req.admin = decoded;
         next();
     } catch (error) {

@@ -10,6 +10,22 @@ const addParticipants = async (req, res) => {
     }
 
     try {
+        // SECURITY: Check if registration gateway is open before processing
+        const regStatus = await client`
+            SELECT value FROM event_management.site_settings 
+            WHERE key = 'registration_open' LIMIT 1
+        `;
+        const isRegistrationOpen = regStatus.length > 0 ? (String(regStatus[0].value) === 'true' || regStatus[0].value === true) : false;
+
+        // Bypass lock for Core and Team Leads
+        const userRole = (req.admin.role || '').toLowerCase();
+        const isAdmin = userRole === 'core' || userRole === 'team_lead' || userRole === 'team lead';
+
+        if (!isRegistrationOpen && !isAdmin) {
+            console.warn(`[REJECTED] Blocked participant registration attempt from ${repEmail} (Registration Gateway: CLOSED)`);
+            return res.status(403).json({ message: "REGISTRATION TERMINATED: The gateway has been closed by the administrator." });
+        }
+
         // 1. Fetch Representative Details from DB to ensure they exist and get their college
         const repRes = await client`
             SELECT id, college_name 
