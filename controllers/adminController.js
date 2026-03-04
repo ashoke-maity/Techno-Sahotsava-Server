@@ -131,11 +131,11 @@ const verifySystemPassword = async (req, res) => {
         `;
 
         const correctPassword = authRes[0].password;
-        const io = req.app.get('io');
+        const systemIo = req.app.get('io');
 
         if (password === correctPassword) {
-            if (io) {
-                logSystemEvent(io, {
+            if (systemIo) {
+                await logSystemEvent(systemIo, {
                     action: 'SYSTEM_CONTROL_ACCESS',
                     category: (req.admin?.role || 'ADMIN').toUpperCase(),
                     userName: req.admin?.name || 'Unknown User',
@@ -144,8 +144,8 @@ const verifySystemPassword = async (req, res) => {
             }
             return res.status(200).json({ success: true, message: "Access granted" });
         } else {
-            if (io) {
-                logSystemEvent(io, {
+            if (systemIo) {
+                await logSystemEvent(systemIo, {
                     action: 'SYSTEM_CONTROL_ACCESS_DENIED',
                     category: 'AUTH',
                     userName: req.admin?.name || 'Unknown User',
