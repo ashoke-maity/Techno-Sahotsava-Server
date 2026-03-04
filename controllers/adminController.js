@@ -122,7 +122,7 @@ const verifySystemPassword = async (req, res) => {
 
         const countRes = await client`SELECT COUNT(*) FROM event_management.system_control_auth`;
         if (parseInt(countRes[0].count) === 0) {
-            const defaultPassword = process.env.SYSTEM_AUTH_PASSWORD || 'default_secure_pass';
+            const defaultPassword = process.env.SYSTEM_AUTH_PASSWORD;
             await client`INSERT INTO event_management.system_control_auth (password) VALUES (${defaultPassword})`;
         }
 
