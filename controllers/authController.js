@@ -1,6 +1,6 @@
 const { client } = require('../configs/db');
 const jwt = require('jsonwebtoken');
-const logSystemEvent = require('../services/loggingService');
+const { logSystemEvent } = require('../services/loggingService');
 
 const userLogin = async (req, res) => {
     const { email, password } = req.body;

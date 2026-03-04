@@ -1,6 +1,6 @@
 const { client } = require('../configs/db');
 const jwt = require('jsonwebtoken');
-const logSystemEvent = require('../services/loggingService');
+const { logSystemEvent } = require('../services/loggingService');
 
 const adminLogin = async (req, res) => {
     const { email, password } = req.body;
@@ -135,22 +135,30 @@ const verifySystemPassword = async (req, res) => {
 
         if (password === correctPassword) {
             if (systemIo) {
-                await logSystemEvent(systemIo, {
-                    action: 'SYSTEM_CONTROL_ACCESS',
-                    category: (req.admin?.role || 'ADMIN').toUpperCase(),
-                    userName: req.admin?.name || 'Unknown User',
-                    details: 'Successfully authenticated into System Control'
-                });
+                if (typeof logSystemEvent === 'function') {
+                    await logSystemEvent(systemIo, {
+                        action: 'SYSTEM_CONTROL_ACCESS',
+                        category: (req.admin?.role || 'ADMIN').toUpperCase(),
+                        userName: req.admin?.name || 'Unknown User',
+                        details: 'Successfully authenticated into System Control'
+                    });
+                } else {
+                    console.error('CRITICAL: logSystemEvent is not a function! Type is:', typeof logSystemEvent);
+                }
             }
             return res.status(200).json({ success: true, message: "Access granted" });
         } else {
             if (systemIo) {
-                await logSystemEvent(systemIo, {
-                    action: 'SYSTEM_CONTROL_ACCESS_DENIED',
-                    category: 'AUTH',
-                    userName: req.admin?.name || 'Unknown User',
-                    details: 'Failed attempt to unlock System Control'
-                });
+                if (typeof logSystemEvent === 'function') {
+                    await logSystemEvent(systemIo, {
+                        action: 'SYSTEM_CONTROL_ACCESS_DENIED',
+                        category: 'AUTH',
+                        userName: req.admin?.name || 'Unknown User',
+                        details: 'Failed attempt to unlock System Control'
+                    });
+                } else {
+                    console.error('CRITICAL: logSystemEvent is not a function! Type is:', typeof logSystemEvent);
+                }
             }
             return res.status(401).json({ success: false, message: "Invalid system password" });
         }

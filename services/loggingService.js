@@ -3,12 +3,9 @@ const { client } = require('../configs/db');
 /**
  * System Logger
  * @param {Object} io - Socket.io instance
- * @param {String} action - Description of the action
- * @param {String} category - Category (ADMIN, REP, SYSTEM, AUTH)
- * @param {String} userName - Name of the user performing the action
- * @param {String} details - Additional details string
+ * @param {Object} data - Log data
  */
-const logSystemEvent = async (io, { action, category, userName, details }) => {
+async function logSystemEvent(io, { action, category, userName, details }) {
     try {
         const result = await client`
             INSERT INTO event_management.system_logs (action, category, user_name, details)
@@ -19,7 +16,7 @@ const logSystemEvent = async (io, { action, category, userName, details }) => {
         const logEntry = result[0];
 
         // Emit to all connected admins in real-time
-        if (io) {
+        if (io && typeof io.emit === 'function') {
             io.emit('systemLogUpdate', logEntry);
         }
 
@@ -27,7 +24,6 @@ const logSystemEvent = async (io, { action, category, userName, details }) => {
     } catch (error) {
         console.error("Critical Logging Failure:", error);
     }
-};
+}
 
-// Export directly for maximum compatibility
-module.exports = logSystemEvent;
+module.exports = { logSystemEvent };

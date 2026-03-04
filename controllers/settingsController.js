@@ -1,5 +1,5 @@
 const { client } = require('../configs/db');
-const logSystemEvent = require('../services/loggingService');
+const { logSystemEvent } = require('../services/loggingService');
 
 const getRegistrationStatus = async (req, res) => {
     try {
