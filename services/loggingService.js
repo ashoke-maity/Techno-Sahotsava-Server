@@ -29,4 +29,5 @@ const logSystemEvent = async (io, { action, category, userName, details }) => {
     }
 };
 
-module.exports = { logSystemEvent };
+// Export directly for maximum compatibility
+module.exports = logSystemEvent;
