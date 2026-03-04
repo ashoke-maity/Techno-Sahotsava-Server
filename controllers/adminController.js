@@ -1,6 +1,6 @@
 const { client } = require('../configs/db');
 const jwt = require('jsonwebtoken');
-const logSystemEvent = require('../services/loggingService');
+const { logSystemEvent } = require('../services/loggingService');
 
 const adminLogin = async (req, res) => {
     const { email, password } = req.body;
@@ -29,7 +29,7 @@ const adminLogin = async (req, res) => {
 
         // Generate JWT Token
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
+            { id: user.id, email: user.email, role: user.role, name: user.name },
             process.env.JWT_SECRET,
             { expiresIn: '1d' }
         );
@@ -131,22 +131,27 @@ const verifySystemPassword = async (req, res) => {
         `;
 
         const correctPassword = authRes[0].password;
+        const io = req.app.get('io');
 
         if (password === correctPassword) {
-            logSystemEvent({
-                action: 'SYSTEM_CONTROL_ACCESS',
-                category: 'ADMIN',
-                userName: req.admin?.name || 'Unknown User',
-                details: 'Successfully authenticated into System Control'
-            });
+            if (io) {
+                logSystemEvent(io, {
+                    action: 'SYSTEM_CONTROL_ACCESS',
+                    category: (req.admin?.role || 'ADMIN').toUpperCase(),
+                    userName: req.admin?.name || 'Unknown User',
+                    details: 'Successfully authenticated into System Control'
+                });
+            }
             return res.status(200).json({ success: true, message: "Access granted" });
         } else {
-            logSystemEvent({
-                action: 'SYSTEM_CONTROL_ACCESS_DENIED',
-                category: 'AUTH',
-                userName: req.admin?.name || 'Unknown User',
-                details: 'Failed attempt to unlock System Control'
-            });
+            if (io) {
+                logSystemEvent(io, {
+                    action: 'SYSTEM_CONTROL_ACCESS_DENIED',
+                    category: 'AUTH',
+                    userName: req.admin?.name || 'Unknown User',
+                    details: 'Failed attempt to unlock System Control'
+                });
+            }
             return res.status(401).json({ success: false, message: "Invalid system password" });
         }
     } catch (error) {
