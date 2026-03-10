@@ -175,4 +175,49 @@ const verifySystemPassword = async (req, res) => {
     }
 };
 
-module.exports = { adminLogin, getTeamLeads, getCoreMembers, getSystemLogs, verifySystemPassword };
+const deleteAdmin = async (req, res) => {
+    const { id } = req.params;
+    const { name: adminName, role: adminRole } = req.admin || {};
+
+    try {
+        const deletedAdmin = await client`
+            DELETE FROM event_management.admins 
+            WHERE id = ${id}
+            RETURNING *
+        `;
+
+        if (deletedAdmin.length === 0) {
+            return res.status(404).json({ message: "Member not found" });
+        }
+
+        const io = req.app.get('io');
+        if (io) {
+            await logSystemEventInternal(io, {
+                action: 'MEMBER_DELETED',
+                category: 'ADMIN_MANAGEMENT',
+                userName: adminName || 'System',
+                details: `Deleted member: ${deletedAdmin[0].name} (${deletedAdmin[0].role})`
+            });
+        }
+
+        res.status(200).json({ message: "Member deleted successfully" });
+    } catch (error) {
+        console.error("Delete Admin Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const getHandlers = async (req, res) => {
+    try {
+        const handlers = await client`
+            SELECT id, name, email, role, domain FROM event_management.admins 
+            WHERE role ILIKE 'participant_handler'
+        `;
+        res.status(200).json(handlers);
+    } catch (error) {
+        console.error("Fetch Handlers Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+module.exports = { adminLogin, getTeamLeads, getCoreMembers, getSystemLogs, verifySystemPassword, deleteAdmin, getHandlers };

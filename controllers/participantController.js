@@ -165,7 +165,7 @@ const getAllRegistrations = async (req, res) => {
                 er.college_name,
                 er.event_registration as event_name,
                 er.created_at,
-                cr.name as rep_name,
+                CONCAT(cr.first_name, ' ', cr.last_name) as rep_name,
                 cr.email as rep_email
             FROM event_management.event_registrations er
             LEFT JOIN event_management.college_representatives cr ON er.rep_id = cr.id
@@ -178,4 +178,18 @@ const getAllRegistrations = async (req, res) => {
     }
 };
 
-module.exports = { addParticipants, getRegistrationsByRep, getStudentRepository, getAllRegistrations };
+const deleteRegistration = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await client`
+            DELETE FROM event_management.event_registrations 
+            WHERE id = ${id} OR registration_id = ${id}
+        `;
+        res.status(200).json({ message: "Registration deleted successfully" });
+    } catch (error) {
+        console.error("Delete Registration Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+module.exports = { addParticipants, getRegistrationsByRep, getStudentRepository, getAllRegistrations, deleteRegistration };

@@ -9,9 +9,34 @@ const connectDB = async () => {
                 value JSONB
             );
         `;
+        
+        await client`
+            CREATE TABLE IF NOT EXISTS event_management.colleges (
+                id SERIAL PRIMARY KEY,
+                name TEXT UNIQUE NOT NULL
+            );
+        `;
+
+        await client`
+            CREATE TABLE IF NOT EXISTS event_management.college_representatives (
+                id SERIAL PRIMARY KEY,
+                first_name TEXT,
+                middle_name TEXT,
+                last_name TEXT,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT,
+                whatsapp TEXT,
+                college_name TEXT,
+                password TEXT,
+                role TEXT DEFAULT 'college_rep',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `;
+
         await client`
             INSERT INTO event_management.site_settings (key, value)
-            VALUES ('registration_open', 'false'::jsonb)
+            VALUES ('registration_open', 'false'::jsonb),
+                   ('colleges_open', 'true'::jsonb)
             ON CONFLICT (key) DO NOTHING;
         `;
 

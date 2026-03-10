@@ -13,10 +13,16 @@ const getRegistrationStatus = async (req, res) => {
             WHERE key = 'maintenance_mode' LIMIT 1
         `;
 
+        const collegesResult = await client`
+            SELECT value FROM event_management.site_settings 
+            WHERE key = 'colleges_open' LIMIT 1
+        `;
+
         res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.status(200).json({
             registration_open: regResult.length > 0 ? (regResult[0].value === true || regResult[0].value === 'true') : false,
-            maintenance_mode: maintResult.length > 0 ? (maintResult[0].value === true || maintResult[0].value === 'true') : false
+            maintenance_mode: maintResult.length > 0 ? (maintResult[0].value === true || maintResult[0].value === 'true') : false,
+            colleges_open: collegesResult.length > 0 ? (collegesResult[0].value === true || collegesResult[0].value === 'true') : false
         });
     } catch (error) {
         console.error("Fetch Site Settings Error:", error);
@@ -102,8 +108,45 @@ const updateMaintenanceMode = async (req, res) => {
     }
 };
 
+const updateCollegesStatus = async (req, res) => {
+    const { colleges_open } = req.body;
+
+    if (colleges_open === undefined) {
+        return res.status(400).json({ message: "Colleges status is required" });
+    }
+
+    try {
+        await client`
+            INSERT INTO event_management.site_settings (key, value)
+            VALUES ('colleges_open', ${colleges_open})
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+        `;
+
+        res.status(200).json({
+            message: "Colleges status updated successfully",
+            colleges_open
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('collegesStatusUpdate', { colleges_open });
+
+            logSystemEvent(io, {
+                action: colleges_open ? "COLLEGES_OPENED" : "COLLEGES_CLOSED",
+                category: "ADMIN",
+                userName: req.admin?.name || "System Admin",
+                details: `Colleges public portal switched to ${colleges_open ? 'ACTIVE' : 'LOCKED'}`
+            });
+        }
+    } catch (error) {
+        console.error("Update Colleges Status Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 module.exports = {
     getRegistrationStatus,
     updateRegistrationStatus,
-    updateMaintenanceMode
+    updateMaintenanceMode,
+    updateCollegesStatus
 };
