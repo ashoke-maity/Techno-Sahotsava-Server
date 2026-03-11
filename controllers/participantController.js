@@ -17,9 +17,9 @@ const addParticipants = async (req, res) => {
         `;
         const isRegistrationOpen = regStatus.length > 0 ? (String(regStatus[0].value) === 'true' || regStatus[0].value === true) : false;
 
-        // Bypass lock for Core and Team Leads
+        // Bypass lock for Core, Team Leads, and Handlers
         const userRole = (req.admin.role || '').toLowerCase();
-        const isAdmin = userRole === 'core' || userRole === 'team_lead' || userRole === 'team lead';
+        const isAdmin = ['core', 'team_lead', 'team lead', 'participant_handler'].includes(userRole);
 
         if (!isRegistrationOpen && !isAdmin) {
             console.warn(`[REJECTED] Blocked participant registration attempt from ${repEmail} (Registration Gateway: CLOSED)`);
@@ -183,7 +183,7 @@ const deleteRegistration = async (req, res) => {
     try {
         await client`
             DELETE FROM event_management.event_registrations 
-            WHERE id = ${id} OR registration_id = ${id}
+            WHERE id::text = ${id} OR registration_id = ${id}
         `;
         res.status(200).json({ message: "Registration deleted successfully" });
     } catch (error) {
