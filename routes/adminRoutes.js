@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { adminLogin, getTeamLeads, getCoreMembers, getSystemLogs, verifySystemPassword, deleteAdmin, getHandlers } = require('../controllers/adminController');
-const { getRegistrationStatus, updateRegistrationStatus, updateMaintenanceMode, updateCollegesStatus } = require('../controllers/settingsController');
+const { getRegistrationStatus, updateRegistrationStatus, updateMaintenanceMode, updateCollegesStatus, updateResultMode } = require('../controllers/settingsController');
 const { getCollegeReps, deleteCollegeRep } = require('../controllers/repController');
 const { getAllEvents, updateEventStatus, toggleAllEvents } = require('../controllers/eventsController');
 const { getAllRegistrations } = require('../controllers/participantController');
 const { getAdminColleges, addAdminCollege, deleteAdminCollege } = require('../controllers/institutionController');
+const { uploadResult, getResults, deleteResult } = require('../controllers/resultController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 // Admin Login Route
@@ -22,8 +23,14 @@ router.get('/registration-status', getRegistrationStatus);
 router.put('/update-registration-status', authMiddleware, updateRegistrationStatus);
 router.put('/update-maintenance-mode', authMiddleware, updateMaintenanceMode);
 router.put('/update-colleges-status', authMiddleware, updateCollegesStatus);
+router.put('/update-result-mode', authMiddleware, updateResultMode);
 router.get('/system-logs', authMiddleware, getSystemLogs);
 router.post('/verify-system-password', authMiddleware, verifySystemPassword);
+
+// Result Management Routes
+router.get('/results', authMiddleware, getResults);
+router.post('/results', authMiddleware, uploadResult);
+router.delete('/results/:id', authMiddleware, deleteResult);
 
 // Event Management Routes
 router.get('/events', authMiddleware, getAllEvents);

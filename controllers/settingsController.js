@@ -18,14 +18,56 @@ const getRegistrationStatus = async (req, res) => {
             WHERE key = 'colleges_open' LIMIT 1
         `;
 
+        const resultModeResult = await client`
+            SELECT value FROM event_management.site_settings 
+            WHERE key = 'result_mode' LIMIT 1
+        `;
+
         res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.status(200).json({
             registration_open: regResult.length > 0 ? (regResult[0].value === true || regResult[0].value === 'true') : false,
             maintenance_mode: maintResult.length > 0 ? (maintResult[0].value === true || maintResult[0].value === 'true') : false,
-            colleges_open: collegesResult.length > 0 ? (collegesResult[0].value === true || collegesResult[0].value === 'true') : false
+            colleges_open: collegesResult.length > 0 ? (collegesResult[0].value === true || collegesResult[0].value === 'true') : false,
+            result_mode: resultModeResult.length > 0 ? (resultModeResult[0].value === true || resultModeResult[0].value === 'true') : false
         });
     } catch (error) {
         console.error("Fetch Site Settings Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const updateResultMode = async (req, res) => {
+    const { result_mode } = req.body;
+
+    if (result_mode === undefined) {
+        return res.status(400).json({ message: "Result mode status is required" });
+    }
+
+    try {
+        await client`
+            INSERT INTO event_management.site_settings (key, value)
+            VALUES ('result_mode', ${result_mode})
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+        `;
+
+        res.status(200).json({
+            message: "Result mode updated successfully",
+            result_mode
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('resultModeUpdate', { result_mode });
+
+            logSystemEvent(io, {
+                action: result_mode ? "RESULT_MODE_ENABLED" : "RESULT_MODE_DISABLED",
+                category: "ADMIN",
+                userName: req.admin?.name || "System Admin",
+                details: `Result announcement mode switched to ${result_mode ? 'ACTIVE' : 'LOCKED'}`
+            });
+        }
+    } catch (error) {
+        console.error("Update Result Mode Error:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -148,5 +190,6 @@ module.exports = {
     getRegistrationStatus,
     updateRegistrationStatus,
     updateMaintenanceMode,
-    updateCollegesStatus
+    updateCollegesStatus,
+    updateResultMode
 };

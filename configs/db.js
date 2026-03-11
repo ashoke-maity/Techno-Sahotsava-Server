@@ -18,6 +18,24 @@ const connectDB = async () => {
         `;
 
         await client`
+            CREATE TABLE IF NOT EXISTS event_management.results (
+                id SERIAL PRIMARY KEY,
+                candidate_name TEXT NOT NULL,
+                position TEXT NOT NULL,
+                event_name TEXT NOT NULL,
+                certificate_url TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `;
+
+        // Manual column addition for existing tables
+        try {
+            await client`ALTER TABLE event_management.results ADD COLUMN IF NOT EXISTS certificate_url TEXT;`;
+        } catch (e) {
+            console.log("Certificate column already exists or table busy.");
+        }
+
+        await client`
             CREATE TABLE IF NOT EXISTS event_management.college_representatives (
                 id SERIAL PRIMARY KEY,
                 first_name TEXT,
@@ -36,7 +54,8 @@ const connectDB = async () => {
         await client`
             INSERT INTO event_management.site_settings (key, value)
             VALUES ('registration_open', 'false'::jsonb),
-                   ('colleges_open', 'true'::jsonb)
+                   ('colleges_open', 'true'::jsonb),
+                   ('result_mode', 'false'::jsonb)
             ON CONFLICT (key) DO NOTHING;
         `;
 
