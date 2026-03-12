@@ -20,16 +20,41 @@ const getCollegeReps = async (req, res) => {
 const deleteCollegeRep = async (req, res) => {
     const { id } = req.params;
     try {
-        // Using email as identifier if id is not present, or checking for both
+        // 1. Fetch the representative's email before purging from database
+        const repRes = await client`
+            SELECT email FROM event_management.college_representatives 
+            WHERE id::text = ${id} OR email = ${id}
+            LIMIT 1
+        `;
+
+        if (repRes.length > 0) {
+            const email = repRes[0].email;
+            
+            // 2. Purge from Firebase Authentication to reset verification state
+            try {
+                const firebaseUser = await admin.auth().getUserByEmail(email);
+                await admin.auth().deleteUser(firebaseUser.uid);
+                console.log(`[FIREBASE] Cleanup successful for: ${email}`);
+            } catch (firebaseErr) {
+                // Ignore if user doesn't exist in Firebase
+                if (firebaseErr.code === 'auth/user-not-found') {
+                    console.log(`[FIREBASE] Account ${email} already absent from auth registry.`);
+                } else {
+                    console.error(`[FIREBASE] Critical Sync Error for ${email}:`, firebaseErr.message);
+                }
+            }
+        }
+
+        // 3. Purge from Institutional Registry (NeonDB)
         await client`
             DELETE FROM event_management.college_representatives 
-            WHERE id = ${id} OR email = ${id}
+            WHERE id::text = ${id} OR email = ${id}
         `;
 
         const io = req.app.get('io');
         if (io) io.emit('repsUpdate');
 
-        res.status(200).json({ message: "Representative deleted successfully" });
+        res.status(200).json({ message: "Representative and authentication records purged successfully." });
     } catch (error) {
         console.error("Delete Representative Error:", error);
         res.status(500).json({ message: "Internal server error" });
