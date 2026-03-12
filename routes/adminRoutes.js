@@ -4,7 +4,7 @@ const { adminLogin, getTeamLeads, getCoreMembers, getSystemLogs, verifySystemPas
 const { getRegistrationStatus, updateRegistrationStatus, updateMaintenanceMode, updateCollegesStatus, updateResultMode } = require('../controllers/settingsController');
 const { getCollegeReps, deleteCollegeRep } = require('../controllers/repController');
 const { getAllEvents, updateEventStatus, toggleAllEvents } = require('../controllers/eventsController');
-const { getAllRegistrations } = require('../controllers/participantController');
+const { getAllRegistrations, deleteRegistration } = require('../controllers/participantController');
 const { getAdminColleges, addAdminCollege, deleteAdminCollege } = require('../controllers/institutionController');
 const { uploadResult, getResults, deleteResult } = require('../controllers/resultController');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -41,6 +41,7 @@ router.put('/events/:id/status', authMiddleware, updateEventStatus);
 router.get('/participants', authMiddleware, getCollegeReps);
 router.delete('/participants/:id', authMiddleware, deleteCollegeRep);
 router.get('/event-registrations', authMiddleware, getAllRegistrations);
+router.delete('/event-registrations/:id', authMiddleware, deleteRegistration);
 
 // Institution Directory Management
 router.get('/colleges', authMiddleware, getAdminColleges);

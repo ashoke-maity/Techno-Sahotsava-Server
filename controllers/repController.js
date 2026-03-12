@@ -1,4 +1,5 @@
 const { client } = require('../configs/db');
+const admin = require('../configs/firebase-admin');
 
 const getCollegeReps = async (req, res) => {
     try {
@@ -32,35 +33,88 @@ const deleteCollegeRep = async (req, res) => {
 };
 
 const createCollegeRep = async (req, res) => {
-    const { firstName, middleName, lastName, email, phone, whatsapp, college } = req.body;
+    const { college, reps, firebaseToken } = req.body;
 
-    if (!email || !firstName || !lastName || !college) {
+    if (!college || !reps || !Array.isArray(reps) || reps.length === 0) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    try {
-        // Simple random password generation
-        const password = 'REP' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    // --- Firebase Token Verification ---
+    if (!firebaseToken) {
+        return res.status(401).json({ success: false, message: "Authentication required. Please verify your contact details." });
+    }
 
-        await client`
-            INSERT INTO event_management.college_representatives (
-                first_name, middle_name, last_name, email, phone, whatsapp, college_name, password
-            ) VALUES (
-                ${firstName}, ${middleName || null}, ${lastName}, ${email}, ${phone}, ${whatsapp}, ${college}, ${password}
-            )
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+        const verifiedEmail = decodedToken.email;
+
+        // Ensure the verified identity matches one of the representatives being registered
+        const isVerifiedMatched = reps.some(r => 
+            r.email.toLowerCase() === verifiedEmail?.toLowerCase()
+        );
+
+        if (!isVerifiedMatched) {
+            return res.status(403).json({ success: false, message: "Verified email does not match the registration data." });
+        }
+    } catch (authError) {
+        console.error("Firebase Auth Verification Failed:", authError);
+        return res.status(401).json({ success: false, message: "Invalid or expired verification session." });
+    }
+    // -----------------------------------
+
+    try {
+        // 1. Check current rep count for this college
+        const existingReps = await client`
+            SELECT password FROM event_management.college_representatives 
+            WHERE college_name = ${college}
         `;
+
+        if (existingReps.length + reps.length > 2) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `This college already has ${existingReps.length} representative(s). A maximum of 2 representatives is allowed per institution.` 
+            });
+        }
+
+        // 2. Determine password
+        let password;
+        if (existingReps.length > 0) {
+            // Reuse existing password for the college
+            password = existingReps[0].password;
+        } else {
+            // Generate a college-inspired random password for the first time
+            const cleanCollege = college.replace(/[^a-zA-Z]/g, '').substring(0, 4).toUpperCase();
+            password = `S26-${cleanCollege}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        }
+
+        // 3. Insert reps in a transaction-like manner (batch insert or sequential)
+        for (const rep of reps) {
+            const { firstName, middleName, lastName, email, phone, whatsapp } = rep;
+            
+            if (!firstName || !lastName || !email || !phone || !whatsapp) {
+                return res.status(400).json({ success: false, message: "Missing required information for one or more representatives." });
+            }
+
+            await client`
+                INSERT INTO event_management.college_representatives (
+                    first_name, middle_name, last_name, email, phone, whatsapp, college_name, password
+                ) VALUES (
+                    ${firstName}, ${middleName || null}, ${lastName}, ${email}, ${phone}, ${whatsapp}, ${college}, ${password}
+                )
+            `;
+        }
 
         res.status(201).json({ 
             success: true, 
-            message: "Representative registered successfully!",
-            password // Optionally returning it if the client needs to show it temporarily
+            message: "Representatives registered successfully!",
+            password: password
         });
     } catch (error) {
         console.error("Register Representative Error:", error);
-        if (error.code === '23505') { // Unique constraint violation (email)
-            return res.status(400).json({ success: false, message: "Email already registered" });
+        if (error.code === '23505') { 
+            return res.status(400).json({ success: false, message: "One or more email addresses are already registered." });
         }
-        res.status(500).json({ success: false, message: "Internal server error" });
+        res.status(500).json({ success: false, message: "Internal server error. Registration could not be processed." });
     }
 };
 

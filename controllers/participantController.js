@@ -181,10 +181,32 @@ const getAllRegistrations = async (req, res) => {
 const deleteRegistration = async (req, res) => {
     const { id } = req.params;
     try {
-        await client`
-            DELETE FROM event_management.event_registrations 
+        // 1. Fetch the registration to get the registration_id (master link)
+        const regRes = await client`
+            SELECT registration_id FROM event_management.event_registrations 
             WHERE id::text = ${id} OR registration_id = ${id}
+            LIMIT 1
         `;
+
+        if (regRes.length > 0) {
+            const masterId = regRes[0].registration_id;
+            
+            // 2. Delete from specific event registry
+            await client`
+                DELETE FROM event_management.event_registrations 
+                WHERE registration_id = ${masterId}
+            `;
+
+            // 3. Delete from Master Archive (participants table)
+            // This is crucial because addParticipants inserts into both
+            await client`
+                DELETE FROM event_management.participants 
+                WHERE registration_id = ${masterId}
+            `;
+
+            console.log(`[DELETED] Registration ${masterId} removed from all registries.`);
+        }
+
         res.status(200).json({ message: "Registration deleted successfully" });
     } catch (error) {
         console.error("Delete Registration Error:", error);
