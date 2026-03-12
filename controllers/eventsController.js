@@ -41,6 +41,7 @@ const updateEventStatus = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.emit('eventStatusUpdate', { id: result[0].id, status });
+            io.emit('eventUpdate');
 
             // Log the event
             logSystemEvent(io, {
@@ -82,6 +83,7 @@ const toggleAllEvents = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.emit('globalEventStatusUpdate', { status });
+            io.emit('eventUpdate');
 
             // Log the event
             logSystemEvent(io, {

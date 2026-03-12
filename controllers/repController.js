@@ -25,6 +25,10 @@ const deleteCollegeRep = async (req, res) => {
             DELETE FROM event_management.college_representatives 
             WHERE id = ${id} OR email = ${id}
         `;
+
+        const io = req.app.get('io');
+        if (io) io.emit('repsUpdate');
+
         res.status(200).json({ message: "Representative deleted successfully" });
     } catch (error) {
         console.error("Delete Representative Error:", error);
@@ -103,6 +107,9 @@ const createCollegeRep = async (req, res) => {
                 )
             `;
         }
+
+        const io = req.app.get('io');
+        if (io) io.emit('repsUpdate');
 
         res.status(201).json({ 
             success: true, 

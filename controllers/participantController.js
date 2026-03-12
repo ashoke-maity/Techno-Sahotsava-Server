@@ -80,6 +80,9 @@ const addParticipants = async (req, res) => {
             results.push({ ...p, registration_id: regId });
         }
 
+        const io = req.app.get('io');
+        if (io) io.emit('registrationsUpdate');
+
         res.status(201).json({
             message: "Participants registered successfully",
             count: results.length
@@ -203,9 +206,10 @@ const deleteRegistration = async (req, res) => {
                 DELETE FROM event_management.participants 
                 WHERE registration_id = ${masterId}
             `;
-
-            console.log(`[DELETED] Registration ${masterId} removed from all registries.`);
         }
+
+        const io = req.app.get('io');
+        if (io) io.emit('registrationsUpdate');
 
         res.status(200).json({ message: "Registration deleted successfully" });
     } catch (error) {

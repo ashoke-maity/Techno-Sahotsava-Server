@@ -45,6 +45,7 @@ const uploadResult = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.emit('newResultPublished', result[0]);
+            io.emit('resultsUpdate');
 
             logSystemEvent(io, {
                 action: "RESULT_PUBLISHED",
@@ -91,6 +92,7 @@ const deleteResult = async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.emit('resultDeleted', { id });
+            io.emit('resultsUpdate');
         }
     } catch (error) {
         console.error("Delete Result Error:", error);
