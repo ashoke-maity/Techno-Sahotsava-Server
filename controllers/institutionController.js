@@ -64,4 +64,34 @@ const deleteAdminCollege = async (req, res) => {
     }
 };
 
-module.exports = { getAdminColleges, addAdminCollege, deleteAdminCollege };
+const updateAdminCollege = async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ message: "College name required" });
+    try {
+        // Get old name for logging
+        const oldCollege = await client`SELECT name FROM event_management.colleges WHERE id = ${id}`;
+        const oldName = oldCollege[0]?.name;
+
+        await client`UPDATE event_management.colleges SET name = ${name} WHERE id = ${id}`;
+        
+        const io = req.app.get('io');
+        if (io) {
+            logSystemEvent(io, {
+                action: 'COLLEGE_UPDATED',
+                category: 'DIRECTORY',
+                userName: req.admin?.name || 'Admin',
+                details: `Renamed "${oldName}" to "${name}"`
+            });
+            // Broadcast update to all clients
+            io.emit('collegesDirectoryUpdate');
+        }
+
+        res.status(200).json({ message: "College updated successfully" });
+    } catch (error) {
+        console.error("Update Admin College Error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+module.exports = { getAdminColleges, addAdminCollege, deleteAdminCollege, updateAdminCollege };
